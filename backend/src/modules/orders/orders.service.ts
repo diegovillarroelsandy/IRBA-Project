@@ -5,9 +5,8 @@ import {
 } from '@nestjs/common';
 
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-
-import { Order } from './entities/order.entity';
+import { Repository, DataSource } from 'typeorm';
+import { Order, OrderStatus } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 
 import { Product } from 'src/modules/products/entities/product.entity';
@@ -37,72 +36,94 @@ export class OrdersService {
 
     @InjectRepository(StockMovement)
     private movementRepo: Repository<StockMovement>,
+    private dataSource: DataSource,
   ) {}
 
   async create(dto: CreateOrderDto) {
-    const customer = await this.customerRepo.findOneBy({
-      id: dto.customerId,
-    });
+    const queryRunner = this.dataSource.createQueryRunner();
 
-    if (!customer) {
-      throw new NotFoundException('Customer not found');
-    }
+    await queryRunner.connect();
 
-    // 🔹 crear order vacía
-    const order = this.orderRepo.create({
-      customer,
-      items: [],
-      total: 0,
-    });
+    await queryRunner.startTransaction();
 
-    const savedOrder = await this.orderRepo.save(order);
-
-    let total = 0;
-
-    for (const item of dto.items) {
-      const product = await this.productRepo.findOneBy({
-        id: item.productId,
+    try {
+      const customer = await queryRunner.manager.findOne(Customer, {
+        where: {
+          id: dto.customerId,
+        },
       });
 
-      if (!product) {
-        throw new NotFoundException(`Product ${item.productId} not found`);
+      if (!customer) {
+        throw new NotFoundException('Customer not found');
       }
 
-      if (product.stock < item.quantity) {
-        throw new BadRequestException(`Not enough stock for ${product.name}`);
+      const order = queryRunner.manager.create(Order, {
+        customer,
+        items: [],
+        total: 0,
+      });
+
+      const savedOrder = await queryRunner.manager.save(order);
+
+      let total = 0;
+
+      for (const item of dto.items) {
+        const product = await queryRunner.manager.findOne(Product, {
+          where: {
+            id: item.productId,
+          },
+        });
+
+        if (!product) {
+          throw new NotFoundException(`Product ${item.productId} not found`);
+        }
+
+        if (product.stock < item.quantity) {
+          throw new BadRequestException(`Not enough stock for ${product.name}`);
+        }
+
+        const subtotal = Number(product.price) * item.quantity;
+
+        total += subtotal;
+
+        product.stock -= item.quantity;
+
+        await queryRunner.manager.save(product);
+
+        const movement = queryRunner.manager.create(StockMovement, {
+          product,
+          type: MovementType.OUT,
+          quantity: item.quantity,
+          reason: `Order #${savedOrder.id}`,
+        });
+
+        await queryRunner.manager.save(movement);
+
+        const orderItem = queryRunner.manager.create(OrderItem, {
+          order: savedOrder,
+          product,
+          quantity: item.quantity,
+          price: product.price,
+          subtotal,
+        });
+
+        await queryRunner.manager.save(orderItem);
       }
 
-      const subtotal = Number(product.price) * item.quantity;
+      savedOrder.total = total;
 
-      total += subtotal;
+      const finalOrder = await queryRunner.manager.save(savedOrder);
 
-      product.stock -= item.quantity;
+      await queryRunner.commitTransaction();
 
-      await this.productRepo.save(product);
+      return finalOrder;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
 
-      const movement = this.movementRepo.create({
-        product,
-        type: MovementType.OUT,
-        quantity: item.quantity,
-        reason: `Order #${savedOrder.id}`,
-      });
-
-      await this.movementRepo.save(movement);
-
-      const orderItem = this.orderItemRepo.create({
-        order: savedOrder,
-        product,
-        quantity: item.quantity,
-        price: product.price,
-        subtotal,
-      });
-
-      await this.orderItemRepo.save(orderItem);
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
-
-    savedOrder.total = total;
-
-    return this.orderRepo.save(savedOrder);
   }
 
   async findAll() {
@@ -112,5 +133,81 @@ export class OrdersService {
         createdAt: 'DESC',
       },
     });
+  }
+  private async getOrderWithItems(id: number): Promise<Order> {
+    const order = await this.orderRepo.findOne({
+      where: { id },
+      relations: ['items', 'items.product', 'customer'],
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    return order;
+  }
+
+  async complete(id: number) {
+    const order = await this.getOrderWithItems(id);
+
+    if (order.status !== OrderStatus.PENDING) {
+      throw new BadRequestException('Only pending orders can be completed');
+    }
+
+    order.status = OrderStatus.COMPLETED;
+
+    return this.orderRepo.save(order);
+  }
+
+  async cancel(id: number) {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+
+    await queryRunner.startTransaction();
+
+    try {
+      const order = await queryRunner.manager.findOne(Order, {
+        where: { id },
+        relations: ['items', 'items.product'],
+      });
+
+      if (!order) {
+        throw new NotFoundException('Order not found');
+      }
+
+      if (order.status !== OrderStatus.PENDING) {
+        throw new BadRequestException('Only pending orders can be cancelled');
+      }
+
+      for (const item of order.items) {
+        item.product.stock += item.quantity;
+
+        await queryRunner.manager.save(item.product);
+
+        const movement = queryRunner.manager.create(StockMovement, {
+          product: item.product,
+          type: MovementType.IN,
+          quantity: item.quantity,
+          reason: `Cancelled Order #${order.id}`,
+        });
+
+        await queryRunner.manager.save(movement);
+      }
+
+      order.status = OrderStatus.CANCELLED;
+
+      const updatedOrder = await queryRunner.manager.save(order);
+
+      await queryRunner.commitTransaction();
+
+      return updatedOrder;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 }
