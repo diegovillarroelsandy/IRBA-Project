@@ -9,7 +9,7 @@ import { StockModule } from './modules/stock/stock.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { OrdersModule } from './modules/orders/orders.module';
-import { StoreModule } from './store/store.module';
+import { StoreModule } from './modules/store/store.module';
 
 @Module({
   imports: [
