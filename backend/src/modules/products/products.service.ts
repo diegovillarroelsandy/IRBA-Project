@@ -1,20 +1,30 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { Product } from './entities/product.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { FilterProductsDto } from './dto/filter-products.dto';
+import { Category } from '../categories/entity/category.entity';
 
 @Injectable()
 export class ProductsService {
   constructor(
     @InjectRepository(Product)
     private productRepository: Repository<Product>,
+    @InjectRepository(Category)
+    private categoryRepo: Repository<Category>,
   ) {}
 
   async create(dto: CreateProductDto) {
-    const product = this.productRepository.create(dto);
+    const category = await this.categoryRepo.findOneBy({
+      id: dto.categoryId,
+    });
+
+    if (!category) {
+      throw new NotFoundException('Category not found');
+    }
+    const product = this.productRepository.create({ ...dto, category });
     return this.productRepository.save(product);
   }
 
