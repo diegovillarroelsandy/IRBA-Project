@@ -37,8 +37,8 @@ export class StoreService {
     });
 
     return {
-      featured,
-      offers,
+      featured: featured.map((p) => this.mapProduct(p)),
+      offers: offers.map((p) => this.mapProduct(p)),
       categories,
     };
   }

@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { Product } from './entities/product.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { FilterProductsDto } from './dto/filter-products.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 import { Category } from '../categories/entity/category.entity';
 
 @Injectable()
@@ -25,6 +26,41 @@ export class ProductsService {
       throw new NotFoundException('Category not found');
     }
     const product = this.productRepository.create({ ...dto, category });
+    return this.productRepository.save(product);
+  }
+
+  async update(id: number, dto: UpdateProductDto) {
+    const product = await this.productRepository.findOne({
+      where: { id },
+      relations: ['category'],
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    if (dto.categoryId) {
+      const category = await this.categoryRepo.findOneBy({
+        id: dto.categoryId,
+      });
+
+      if (!category) {
+        throw new NotFoundException('Category not found');
+      }
+
+      product.category = category;
+    }
+
+    Object.assign(product, {
+      name: dto.name ?? product.name,
+      description: dto.description ?? product.description,
+      price: dto.price ?? product.price,
+      stock: dto.stock ?? product.stock,
+      imageUrl: dto.imageUrl ?? product.imageUrl,
+      isFeatured: dto.isFeatured ?? product.isFeatured,
+      isOnSale: dto.isOnSale ?? product.isOnSale,
+    });
+
     return this.productRepository.save(product);
   }
 

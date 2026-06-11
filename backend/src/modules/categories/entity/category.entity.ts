@@ -14,14 +14,12 @@ export class Category {
   @Column({ type: 'varchar' })
   name!: string;
 
-  // 🔹 Categoría padre
   @ManyToOne(() => Category, (category) => category.children, {
     nullable: true,
     onDelete: 'CASCADE',
   })
   parent!: Category;
 
-  // 🔹 Subcategorías
   @OneToMany(() => Category, (category) => category.parent)
   children!: Category[];
 }

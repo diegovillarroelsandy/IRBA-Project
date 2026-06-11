@@ -16,6 +16,8 @@ export default function Navbar() {
           <Link href="/offers">Ofertas</Link>
 
           <Link href="/contact">Contacto</Link>
+
+          <Link href="/categories">Categorías</Link>
         </nav>
       </div>
     </header>
