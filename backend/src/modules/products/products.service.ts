@@ -93,15 +93,34 @@ export class ProductsService {
     const limit = Number(filters.limit) || 10;
 
     query.skip((page - 1) * limit).take(limit);
+    const [data, total] = await query.getManyAndCount();
 
-    return query.getMany();
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   findOne(id: number) {
     return this.productRepository.findOneBy({ id });
   }
 
-  remove(id: number) {
-    return this.productRepository.delete(id);
+  async remove(id: number) {
+    const product = await this.productRepository.findOneBy({
+      id,
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    await this.productRepository.remove(product);
+
+    return {
+      message: 'Product deleted successfully',
+    };
   }
 }

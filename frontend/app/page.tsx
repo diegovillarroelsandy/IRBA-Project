@@ -1,4 +1,5 @@
 import ProductCard from "@/components/ProductCard";
+import Link from "next/dist/client/link";
 
 async function getHomeData() {
   const res = await fetch("http://localhost:3000/store/home", {
@@ -22,6 +23,12 @@ export default async function Home() {
   return (
     <main className="max-w-7xl mx-auto p-6">
       <h1 className="text-5xl font-bold mb-12">IRBA</h1>
+      <Link
+        href="/login"
+        className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800"
+      >
+        Iniciar sesión
+      </Link>
 
       <section className="mb-16">
         <h2 className="text-3xl font-bold mb-6">Productos Destacados</h2>

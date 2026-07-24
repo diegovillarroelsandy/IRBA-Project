@@ -1,33 +1,199 @@
 "use client";
-
 import { useCallback, useEffect, useState } from "react";
 import { adminApi } from "@/lib/admin-api";
+import { toast } from "sonner";
+import ProductDialog from "@/components/product/ProductDialog";
+import { Button } from "@/components/ui/button";
+import { Product } from "@/types/product";
+import { PaginatedResponse } from "@/types/api";
+import { Category } from "@/types/category";
+import { useDebounce } from "@/hooks/useDebounce";
+import DataTable, { DataTableColumn } from "@/components/common/DataTable";
+import ConfirmDialog from "@/components/common/ConfirmDialog";
+import { Pencil, Trash2 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import Image from "next/image";
+import { Badge } from "@/components/ui/badge";
+import {
+  SelectItem,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+} from "@/components/ui/select";
+import { DataTableFilters } from "@/components/common/DataTable";
 
 export default function AdminProductsPage() {
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("");
   const [imageUrl, setImageUrl] = useState("");
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isFeatured, setIsFeatured] = useState(false);
   const [isOnSale, setIsOnSale] = useState(false);
   const [categoryId, setCategoryId] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<any | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(
+    null,
+  );
+  const [loading, setLoading] = useState(false);
+  const [featuredFilter, setFeaturedFilter] = useState("all");
+  const [onSaleFilter, setOnSaleFilter] = useState("all");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const debouncedSearch = useDebounce(search, 400);
+  const columns: DataTableColumn<Product>[] = [
+    {
+      key: "id",
+      header: "ID",
+    },
 
+    {
+      key: "name",
+      header: "Nombre",
+    },
+    {
+      key: "imageUrl",
+      header: "Imagen",
+      render: (product) =>
+        product.imageUrl ? (
+          <Image
+            src={product.imageUrl}
+            alt={product.name}
+            width={60}
+            height={60}
+            className="h-14 w-14 rounded-md object-cover"
+          />
+        ) : (
+          <div className="h-14 w-14 rounded-md bg-muted flex items-center justify-center">
+            N/A
+          </div>
+        ),
+    },
+
+    {
+      key: "category",
+      header: "Categoría",
+      render: (product) => (
+        <span>{product.category?.name ?? "Sin categoría"}</span>
+      ),
+    },
+
+    {
+      key: "price",
+      header: "Precio",
+      render: (product) => <span>Bs {product.price}</span>,
+    },
+
+    {
+      key: "stock",
+      header: "Stock",
+    },
+
+    {
+      key: "isFeatured",
+      header: "Destacado",
+      render: (product) =>
+        product.isFeatured ? (
+          <Badge>Destacado</Badge>
+        ) : (
+          <Badge variant="secondary">No</Badge>
+        ),
+    },
+
+    {
+      key: "isOnSale",
+      header: "Oferta",
+      render: (product) =>
+        product.isOnSale ? (
+          <Badge variant="destructive">Oferta</Badge>
+        ) : (
+          <Badge variant="secondary">No</Badge>
+        ),
+    },
+
+    {
+      key: "actions",
+      header: "Acciones",
+      render: (product) => (
+        <div className="flex gap-2">
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => openEditModal(product)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              }
+            />
+
+            <TooltipContent>Editar producto</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => {
+                    setSelectedProductId(product.id);
+                    setConfirmOpen(true);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              }
+            />
+
+            <TooltipContent>Eliminar producto</TooltipContent>
+          </Tooltip>
+        </div>
+      ),
+    },
+  ];
   const loadProducts = useCallback(async () => {
     try {
-      const { data } = await adminApi.get("/products");
+      setLoading(true);
+      const { data } = await adminApi.get<PaginatedResponse<Product>>(
+        "/products",
+        {
+          params: {
+            page,
+            limit: pageSize,
+            search,
+            featured: featuredFilter === "all" ? undefined : featuredFilter,
+            onSale: onSaleFilter === "all" ? undefined : onSaleFilter,
+            category: selectedCategory === "all" ? undefined : selectedCategory,
+          },
+        },
+      );
 
-      setProducts(data);
+      setProducts(data.data);
+      setTotal(data.total);
+      setTotalPages(data.totalPages);
     } catch (error) {
       console.error(error);
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }, [page, pageSize, search, selectedCategory, featuredFilter, onSaleFilter]);
   const loadCategories = useCallback(async () => {
     try {
       const { data } = await adminApi.get("/categories");
@@ -53,7 +219,7 @@ export default function AdminProductsPage() {
 
     return data.secure_url;
   }
-  function openEditModal(product: any) {
+  function openEditModal(product: Product) {
     setEditingProduct(product);
 
     setName(product.name);
@@ -131,6 +297,45 @@ export default function AdminProductsPage() {
     }
   }
 
+  async function deleteProduct(id: number) {
+    try {
+      await adminApi.delete(`/products/${id}`);
+
+      toast.success("Producto eliminado correctamente.");
+
+      await loadProducts();
+    } catch (error: unknown) {
+      console.error(error);
+
+      if (typeof error === "object" && error !== null && "response" in error) {
+        const response = error.response as {
+          data?: { message?: string };
+        };
+
+        toast.error(response.data?.message ?? "Error al eliminar producto");
+      }
+    }
+  }
+  const openCreateModal = () => {
+    setEditingProduct(null);
+
+    setName("");
+    setDescription("");
+    setPrice("");
+    setStock("");
+
+    setCategoryId("");
+
+    setIsFeatured(false);
+    setIsOnSale(false);
+
+    setFile(null);
+
+    setIsModalOpen(true);
+  };
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, selectedCategory, featuredFilter, onSaleFilter]);
   useEffect(() => {
     loadProducts();
     loadCategories();
@@ -139,149 +344,87 @@ export default function AdminProductsPage() {
   return (
     <main className="max-w-7xl mx-auto p-6">
       <h1 className="text-4xl font-bold mb-8">Administración de Productos</h1>
-      <div className="flex justify-between mb-6">
-        <button
-          onClick={() => {
-            setEditingProduct(null);
-            setIsModalOpen(true);
-          }}
-          className="bg-black text-white px-4 py-2 rounded"
-        >
-          Nuevo Producto
-        </button>
-      </div>
-      <table className="w-full border">
-        <thead>
-          <tr>
-            <th className="border p-2">ID</th>
+      <DataTable<Product>
+        data={products}
+        columns={columns}
+        loading={loading}
+        toolbar={{
+          search,
+          onSearchChange: setSearch,
+          buttonText: "Nuevo Producto",
+          onCreate: () => setIsModalOpen(true),
+        }}
+        filters={
+          <DataTableFilters
+            categories={categories}
+            selectedCategory={selectedCategory}
+            onCategoryChange={setSelectedCategory}
+            featuredFilter={featuredFilter}
+            onFeaturedChange={setFeaturedFilter}
+            onSaleFilter={onSaleFilter}
+            onSaleChange={setOnSaleFilter}
+          />
+        }
+        pagination={{
+          page,
+          totalPages,
+          total,
+          pageSize,
+          onPageChange: setPage,
+          onPageSizeChange: (size) => {
+            setPageSize(size);
+            setPage(1);
+          },
+        }}
+        emptyState={{
+          title: "No hay productos",
+          description: "Intenta cambiar los filtros o crear un nuevo producto.",
+        }}
+      />
 
-            <th className="border p-2">Nombre</th>
+      <div className="border-t px-6 py-4"></div>
 
-            <th className="border p-2">Precio</th>
+      <ProductDialog
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        name={name}
+        setName={setName}
+        description={description}
+        setDescription={setDescription}
+        price={price}
+        setPrice={setPrice}
+        stock={stock}
+        setStock={setStock}
+        categoryId={categoryId}
+        setCategoryId={setCategoryId}
+        categories={categories}
+        isFeatured={isFeatured}
+        setIsFeatured={setIsFeatured}
+        isOnSale={isOnSale}
+        setIsOnSale={setIsOnSale}
+        setFile={setFile}
+        uploading={uploading}
+        editingProduct={editingProduct}
+        createProduct={createProduct}
+        updateProduct={updateProduct}
+      />
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Eliminar producto"
+        description="Esta acción no se puede deshacer."
+        onConfirm={async () => {
+          if (selectedProductId !== null) {
+            await deleteProduct(selectedProductId);
+          }
 
-            <th className="border p-2">Stock</th>
-            <th className="border p-2">Acciones</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {products.map((product: any) => (
-            <tr key={product.id}>
-              <td className="border p-2">{product.id}</td>
-
-              <td className="border p-2">{product.name}</td>
-
-              <td className="border p-2">{product.price}</td>
-
-              <td className="border p-2">{product.stock}</td>
-              <td className="border p-2">
-                <button
-                  onClick={() => openEditModal(product)}
-                  className="bg-blue-500 text-white px-2 py-1 rounded"
-                >
-                  Editar
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg w-[500px]">
-            <h2 className="text-2xl font-bold mb-4">Nuevo Producto</h2>
-
-            <div className="space-y-3">
-              <input
-                placeholder="Nombre"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full border p-2 rounded"
-              />
-
-              <textarea
-                placeholder="Descripción"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full border p-2 rounded"
-              />
-
-              <input
-                placeholder="Precio"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                className="w-full border p-2 rounded"
-              />
-
-              <input
-                placeholder="Stock"
-                value={stock}
-                onChange={(e) => setStock(e.target.value)}
-                className="w-full border p-2 rounded"
-              />
-              <select
-                value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                className="w-full border p-2 rounded"
-              >
-                <option value="">Seleccione categoría</option>
-
-                {categories.map((category: any) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-
-              <div className="flex gap-4">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={isFeatured}
-                    onChange={(e) => setIsFeatured(e.target.checked)}
-                  />
-                  Destacado
-                </label>
-
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={isOnSale}
-                    onChange={(e) => setIsOnSale(e.target.checked)}
-                  />
-                  Oferta
-                </label>
-              </div>
-
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
-                className="w-full border p-2 rounded"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 mt-4">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="border px-4 py-2 rounded"
-              >
-                Cancelar
-              </button>
-
-              <button
-                onClick={() =>
-                  editingProduct ? updateProduct() : createProduct()
-                }
-                disabled={uploading}
-                className="bg-black text-white px-4 py-2 rounded"
-              >
-                {uploading ? "Subiendo..." : "Guardar"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          setConfirmOpen(false);
+          setSelectedProductId(null);
+        }}
+        onCancel={() => {
+          setConfirmOpen(false);
+          setSelectedProductId(null);
+        }}
+      />
     </main>
   );
 }

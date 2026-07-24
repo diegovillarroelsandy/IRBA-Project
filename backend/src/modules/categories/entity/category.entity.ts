@@ -5,6 +5,7 @@ import {
   ManyToOne,
   OneToMany,
 } from 'typeorm';
+import { Product } from '../../products/entities/product.entity';
 
 @Entity('categories')
 export class Category {
@@ -22,4 +23,7 @@ export class Category {
 
   @OneToMany(() => Category, (category) => category.parent)
   children!: Category[];
+
+  @OneToMany(() => Product, (product) => product.category)
+  products!: Product[];
 }

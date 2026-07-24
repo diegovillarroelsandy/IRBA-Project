@@ -18,6 +18,8 @@ export default function Navbar() {
           <Link href="/contact">Contacto</Link>
 
           <Link href="/categories">Categorías</Link>
+
+          <Link href="/showroom">Showroom</Link>
         </nav>
       </div>
     </header>
