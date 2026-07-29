@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-
+import { LayoutDashboard } from "lucide-react";
+import { Button } from "../ui/button";
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -42,12 +43,21 @@ export default function Sidebar() {
         </Link>
 
         <Link
-          href="/admin/orders"
+          href="/admin/stock"
           className={`px-4 py-3 rounded transition ${
-            pathname === "/admin/orders" ? "bg-blue-600" : "hover:bg-gray-800"
+            pathname === "/admin/stock" ? "bg-blue-600" : "hover:bg-gray-800"
           }`}
         >
-          🛒 Pedidos
+          🛒 Stock
+        </Link>
+
+        <Link href="/admin/users">Usuarios</Link>
+
+        <Link href="/admin">
+          <Button variant="ghost" className="w-full justify-start">
+            <LayoutDashboard className="mr-2 h-4 w-4" />
+            Dashboard
+          </Button>
         </Link>
       </nav>
 

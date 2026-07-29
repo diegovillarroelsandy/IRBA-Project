@@ -13,29 +13,60 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
+import type { Category } from "@/types/category";
+import CategoryDialog from "@/components/category/CategoryDialog";
+import { usePagination } from "@/hooks/usePagination";
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<any | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [name, setName] = useState("");
   const [parentId, setParentId] = useState("");
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const {
+    page,
+    setPage,
 
+    pageSize,
+    setPageSize,
+
+    total,
+    setTotal,
+
+    totalPages,
+    setTotalPages,
+
+    resetPage,
+  } = usePagination();
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
     null,
   );
   const loadCategories = useCallback(async () => {
     try {
-      const { data } = await adminApi.get("/categories");
-      setCategories(data);
+      setLoading(true);
+
+      const { data } = await adminApi.get("/categories", {
+        params: {
+          page,
+          limit: pageSize,
+          search,
+        },
+      });
+
+      setCategories(data.data);
+      setTotal(data.total);
+      setTotalPages(data.totalPages);
     } catch (error) {
       console.error(error);
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }, [page, pageSize, search, setTotal, setTotalPages]);
 
-  function openEditModal(category: any) {
+  function openEditModal(category: Category) {
     setEditingCategory(category);
 
     setName(category.name);
@@ -50,8 +81,7 @@ export default function CategoriesPage() {
         name,
         parentId: parentId ? Number(parentId) : undefined,
       });
-
-      setIsModalOpen(false);
+      closeDialog();
       toast.success("Categoría creada correctamente");
 
       await loadCategories();
@@ -70,9 +100,8 @@ export default function CategoriesPage() {
         name,
         parentId: parentId ? Number(parentId) : undefined,
       });
+      closeDialog();
       toast.success("Categoría actualizada correctamente");
-
-      setIsModalOpen(false);
 
       await loadCategories();
     } catch (error: any) {
@@ -99,7 +128,15 @@ export default function CategoriesPage() {
     }
   }
 
-  const columns: DataTableColumn<any>[] = [
+  function closeDialog() {
+    setIsModalOpen(false);
+
+    setEditingCategory(null);
+    setName("");
+    setParentId("");
+  }
+
+  const columns: DataTableColumn<Category>[] = [
     {
       key: "id",
       header: "ID",
@@ -170,66 +207,11 @@ export default function CategoriesPage() {
       <div className="flex justify-between mb-6">
         <h1 className="text-3xl font-bold">Categorías</h1>
       </div>
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg w-96">
-            <h2 className="text-xl font-bold mb-4">
-              {editingCategory ? "Editar Categoría" : "Nueva Categoría"}
-            </h2>
 
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Nombre"
-              className="w-full border p-2 rounded mb-4"
-            />
-
-            <select
-              value={parentId}
-              onChange={(e) => setParentId(e.target.value)}
-              className="w-full border p-2 rounded mb-4"
-            >
-              <option value="">Sin categoría padre</option>
-
-              {categories
-                .filter((c) => c.id !== editingCategory?.id)
-                .map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-            </select>
-
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 border rounded"
-              >
-                Cancelar
-              </button>
-
-              <button
-                onClick={() =>
-                  editingCategory ? updateCategory() : createCategory()
-                }
-                className="bg-black text-white px-4 py-2 rounded"
-              >
-                Guardar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       <DataTable
-        data={
-          search
-            ? categories.filter((category) =>
-                category.name.toLowerCase().includes(search.toLowerCase()),
-              )
-            : categories
-        }
+        data={categories}
         columns={columns}
-        loading={false}
+        loading={loading}
         emptyState={{
           title: "No hay categorías",
           description: "Crea una nueva categoría para comenzar.",
@@ -245,6 +227,36 @@ export default function CategoriesPage() {
             setIsModalOpen(true);
           },
         }}
+        pagination={{
+          page,
+          totalPages,
+          total,
+          pageSize,
+
+          onPageChange: setPage,
+
+          onPageSizeChange: (size) => {
+            setPageSize(size);
+            resetPage();
+          },
+        }}
+      />
+      <CategoryDialog
+        open={isModalOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeDialog();
+          } else {
+            setIsModalOpen(true);
+          }
+        }}
+        editingCategory={editingCategory}
+        categories={categories}
+        name={name}
+        setName={setName}
+        parentId={parentId}
+        setParentId={setParentId}
+        onSave={() => (editingCategory ? updateCategory() : createCategory())}
       />
       <ConfirmDialog
         open={confirmOpen}

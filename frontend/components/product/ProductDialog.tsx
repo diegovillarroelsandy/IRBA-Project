@@ -101,31 +101,33 @@ export default function ProductDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          <label className="text-sm font-medium">Nombre</label>
           <Input
             placeholder="Nombre"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
-
+          <label className="text-sm font-medium">Descripción</label>
           <Textarea
             placeholder="Descripción"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             className="w-full rounded-md border p-2 min-h-24"
           />
-
+          <label className="text-sm font-medium">Precio</label>
           <Input
             placeholder="Precio"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
           />
-
+          <label className="text-sm font-medium">Stock</label>
           <Input
             placeholder="Stock"
             value={stock}
             onChange={(e) => setStock(e.target.value)}
+            disabled={!!editingProduct}
           />
-
+          <label className="text-sm font-medium">Categoría</label>
           <Select
             value={categoryId}
             onValueChange={(value) => {
@@ -159,10 +161,9 @@ export default function ProductDialog({
             <label>Destacado</label>
 
             <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={isOnSale}
-                onChange={(e) => setIsOnSale(e.target.checked)}
+                onCheckedChange={(value) => setIsOnSale(Boolean(value))}
               />
               Oferta
             </label>

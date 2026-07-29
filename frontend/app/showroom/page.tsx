@@ -18,24 +18,83 @@ export default function ShowroomPage() {
         {showroomItems.map((item) => (
           <div
             key={item.id}
-            className="bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 overflow-hidden"
+            className="
+    group
+    overflow-hidden
+    rounded-3xl
+    bg-white
+    border border-gray-200
+    shadow-sm
+    hover:shadow-2xl
+    hover:border-gray-300
+    transition-all
+    duration-500
+    hover:-translate-y-2
+  "
           >
-            <Image
-              src={item.image}
-              alt={item.name}
-              width={500}
-              height={300}
-              className="w-full h-56 object-contain bg-gray-50 p-4"
-            />
+            {/* Imagen */}
+            <div className="relative h-72 bg-gradient-to-br from-gray-50 to-gray-200 overflow-hidden">
+              <Image
+                src={item.image}
+                alt={item.name}
+                fill
+                className="
+        object-contain
+        p-8
+        transition-transform
+        duration-500
+        group-hover:scale-110
+      "
+              />
 
-            <div className="p-5">
-              <h2 className="text-xl font-bold">{item.name}</h2>
+              {/* Badge */}
+              <span className="absolute top-4 left-4 bg-black text-white text-xs font-semibold px-3 py-1 rounded-full">
+                Nuevo
+              </span>
+            </div>
 
+            {/* Contenido */}
+            <div className="p-6">
+              <h2 className="text-2xl font-bold text-gray-900">{item.name}</h2>
+
+              <p className="mt-2 text-gray-500 line-clamp-2">
+                {item.description}
+              </p>
+
+              {/* Características */}
+              <div className="mt-5 flex flex-wrap gap-2">
+                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-600">
+                  3D
+                </span>
+
+                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-600">
+                  Alta calidad
+                </span>
+
+                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-600">
+                  Interactivo
+                </span>
+              </div>
+
+              {/* Botón */}
               <button
                 onClick={() => setSelectedItem(item)}
-                className="mt-4 bg-black text-white px-4 py-2 rounded"
+                className="
+        mt-6
+        w-full
+        rounded-xl
+        bg-black
+        py-3
+        font-semibold
+        text-white
+        transition-all
+        duration-300
+        hover:bg-gray-800
+        hover:scale-[1.02]
+        active:scale-95
+      "
               >
-                Ver modelo
+                Explorar en 3D →
               </button>
             </div>
           </div>

@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { Category } from './entity/category.entity';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import { FilterCategoriesDto } from './dto/filter-categories.dto';
 
 @Injectable()
 export class CategoriesService {
@@ -90,9 +91,30 @@ export class CategoriesService {
     };
   }
 
-  findAll() {
-    return this.repo.find({
-      relations: ['parent', 'children'],
-    });
+  async findAll(filters: FilterCategoriesDto) {
+    const query = this.repo
+      .createQueryBuilder('category')
+      .leftJoinAndSelect('category.parent', 'parent')
+      .leftJoinAndSelect('category.children', 'children');
+
+    if (filters.search) {
+      query.andWhere('LOWER(category.name) LIKE LOWER(:search)', {
+        search: `%${filters.search}%`,
+      });
+    }
+
+    const page = Number(filters.page) || 1;
+    const limit = Number(filters.limit) || 10;
+
+    query.skip((page - 1) * limit).take(limit);
+
+    const [data, total] = await query.getManyAndCount();
+
+    return {
+      data,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 }

@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get, UseGuards, Query } from '@nestjs/common';
 
 import { StockService } from './stock.service';
 import { CreateMovementDto } from './dto/create-movement.dto';
@@ -20,7 +20,11 @@ export class StockController {
   }
 
   @Get()
-  findAll() {
-    return this.service.findAll();
+  findAll(
+    @Query('page') page = '1',
+    @Query('limit') limit = '10',
+    @Query('search') search?: string,
+  ) {
+    return this.service.findAll(Number(page), Number(limit), search);
   }
 }

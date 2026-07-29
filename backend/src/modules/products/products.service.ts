@@ -70,9 +70,15 @@ export class ProductsService {
       .leftJoinAndSelect('product.category', 'category');
 
     if (filters.search) {
-      query.andWhere('LOWER(product.name) LIKE LOWER(:search)', {
-        search: `%${filters.search}%`,
-      });
+      const search = filters.search.trim();
+
+      query.andWhere(
+        `(LOWER(product.name) LIKE LOWER(:search)
+      OR CAST(product.id AS TEXT) LIKE :search)`,
+        {
+          search: `%${search}%`,
+        },
+      );
     }
 
     if (filters.featured === 'true') {

@@ -7,6 +7,7 @@ import {
   Delete,
   Param,
   Patch,
+  Query,
 } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -15,6 +16,7 @@ import { RolesGuard } from '../auth/guards/roles/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../users/enums/role.enum';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import { FilterCategoriesDto } from './dto/filter-categories.dto';
 @Controller('categories')
 export class CategoriesController {
   constructor(private readonly service: CategoriesService) {}
@@ -27,8 +29,8 @@ export class CategoriesController {
   }
 
   @Get()
-  findAll() {
-    return this.service.findAll();
+  findAll(@Query() filters: FilterCategoriesDto) {
+    return this.service.findAll(filters);
   }
 
   @Roles(Role.ADMIN)

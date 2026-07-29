@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { Category } from "./types";
+import type { Category } from "@/types/category";
 
 interface DataTableFiltersProps {
   categories: Category[];

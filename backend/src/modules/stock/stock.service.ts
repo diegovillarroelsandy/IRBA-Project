@@ -50,9 +50,29 @@ export class StockService {
     return this.movementRepo.save(movement);
   }
 
-  findAll() {
-    return this.movementRepo.find({
-      relations: ['product'],
-    });
+  async findAll(page = 1, limit = 10, search?: string) {
+    const query = this.movementRepo
+      .createQueryBuilder('movement')
+      .leftJoinAndSelect('movement.product', 'product');
+
+    if (search) {
+      query.andWhere('LOWER(product.name) LIKE LOWER(:search)', {
+        search: `%${search}%`,
+      });
+    }
+
+    query
+      .orderBy('movement.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [data, total] = await query.getManyAndCount();
+
+    return {
+      data,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 }

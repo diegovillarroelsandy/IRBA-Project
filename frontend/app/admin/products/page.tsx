@@ -10,7 +10,7 @@ import { Category } from "@/types/category";
 import { useDebounce } from "@/hooks/useDebounce";
 import DataTable, { DataTableColumn } from "@/components/common/DataTable";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, PackagePlus } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -18,14 +18,9 @@ import {
 } from "@/components/ui/tooltip";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
-import {
-  SelectItem,
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-} from "@/components/ui/select";
 import { DataTableFilters } from "@/components/common/DataTable";
+import { usePagination } from "@/hooks/usePagination";
+import StockMovementDialog from "@/components/stock/StockMovementDialog";
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -43,10 +38,6 @@ export default function AdminProductsPage() {
   const [uploading, setUploading] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(
     null,
@@ -56,6 +47,23 @@ export default function AdminProductsPage() {
   const [onSaleFilter, setOnSaleFilter] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const debouncedSearch = useDebounce(search, 400);
+  const [movementDialogOpen, setMovementDialogOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const {
+    page,
+    setPage,
+
+    pageSize,
+    setPageSize,
+
+    total,
+    setTotal,
+
+    totalPages,
+    setTotalPages,
+
+    resetPage,
+  } = usePagination();
   const columns: DataTableColumn<Product>[] = [
     {
       key: "id",
@@ -146,6 +154,25 @@ export default function AdminProductsPage() {
 
             <TooltipContent>Editar producto</TooltipContent>
           </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => {
+                    setSelectedProduct(product);
+                    setMovementDialogOpen(true);
+                  }}
+                >
+                  <PackagePlus className="h-4 w-4" />
+                </Button>
+              }
+            />
+
+            <TooltipContent>Registrar movimiento</TooltipContent>
+          </Tooltip>
           <Tooltip>
             <TooltipTrigger
               render={
@@ -198,7 +225,7 @@ export default function AdminProductsPage() {
     try {
       const { data } = await adminApi.get("/categories");
 
-      setCategories(data);
+      setCategories(data.data);
     } catch (error) {
       console.error(error);
     }
@@ -256,7 +283,7 @@ export default function AdminProductsPage() {
         isOnSale,
         categoryId: Number(categoryId),
       });
-
+      setEditingProduct(null);
       setIsModalOpen(false);
 
       setName("");
@@ -334,8 +361,14 @@ export default function AdminProductsPage() {
     setIsModalOpen(true);
   };
   useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, selectedCategory, featuredFilter, onSaleFilter]);
+    resetPage();
+  }, [
+    debouncedSearch,
+    selectedCategory,
+    featuredFilter,
+    onSaleFilter,
+    resetPage,
+  ]);
   useEffect(() => {
     loadProducts();
     loadCategories();
@@ -352,7 +385,7 @@ export default function AdminProductsPage() {
           search,
           onSearchChange: setSearch,
           buttonText: "Nuevo Producto",
-          onCreate: () => setIsModalOpen(true),
+          onCreate: () => openCreateModal(),
         }}
         filters={
           <DataTableFilters
@@ -407,6 +440,12 @@ export default function AdminProductsPage() {
         editingProduct={editingProduct}
         createProduct={createProduct}
         updateProduct={updateProduct}
+      />
+      <StockMovementDialog
+        open={movementDialogOpen}
+        onOpenChange={setMovementDialogOpen}
+        product={selectedProduct}
+        onSuccess={loadProducts}
       />
       <ConfirmDialog
         open={confirmOpen}
