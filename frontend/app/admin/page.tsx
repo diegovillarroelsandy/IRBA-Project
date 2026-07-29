@@ -8,7 +8,8 @@ import DashboardPieChart from "@/components/dashboard/DashboardPieChart";
 import DashboardRecentMovements from "@/components/dashboard/DashboardRecentMovements";
 import { MovementType } from "@/types/stock";
 import DashboardLowStock from "@/components/dashboard/DashboardLowStock";
-
+import { useCallback, useEffect, useState } from "react";
+import { adminApi } from "@/lib/admin-api";
 export default function DashboardPage() {
   interface RecentMovement {
     id: number;
@@ -17,95 +18,33 @@ export default function DashboardPage() {
     quantity: number;
     date: string;
   }
-  const dashboardData = {
+  interface DashboardData {
     kpis: {
-      products: 128,
-      categories: 12,
-      users: 5,
-      stock: 840,
-    },
+      products: number;
+      categories: number;
+      users: number;
+      stock: number;
+    };
 
-    productsByCategory: [
-      {
-        category: "Escritorios",
-        total: 38,
-      },
-      {
-        category: "Sillas",
-        total: 27,
-      },
-      {
-        category: "Archivadores",
-        total: 19,
-      },
-      {
-        category: "Mesas",
-        total: 15,
-      },
-      {
-        category: "Estanterías",
-        total: 29,
-      },
-    ],
+    productsByCategory: any[];
+    featuredProducts: any[];
+    recentMovements: any[];
+    lowStock: any[];
+  }
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(
+    null,
+  );
+  const loadDashboard = useCallback(async () => {
+    const { data } = await adminApi.get("/dashboard");
+    setDashboardData(data);
+  }, []);
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
 
-    featuredProducts: [
-      {
-        name: "Destacados",
-        value: 36,
-      },
-      {
-        name: "Normales",
-        value: 92,
-      },
-    ],
-    recentMovements: [
-      {
-        id: 1,
-        product: "Escritorio Ejecutivo",
-        type: MovementType.IN,
-        quantity: 12,
-        date: "Hace 5 min",
-      },
-      {
-        id: 2,
-        product: "Archivador Metálico",
-        type: MovementType.OUT,
-        quantity: 3,
-        date: "Hace 18 min",
-      },
-      {
-        id: 3,
-        product: "Mesa Industrial",
-        type: MovementType.IN,
-        quantity: 8,
-        date: "Hace 1 hora",
-      },
-      {
-        id: 4,
-        product: "Silla Operativa",
-        type: MovementType.OUT,
-        quantity: 2,
-        date: "Hace 3 horas",
-      },
-    ] satisfies RecentMovement[],
-    lowStock: [
-      {
-        id: 1,
-        name: "Silla Operativa",
-        stock: 2,
-      },
-      {
-        id: 2,
-        name: "Archivador Metálico",
-        stock: 3,
-      },
-      {
-        id: 3,
-        name: "Mesa Ejecutiva",
-        stock: 1,
-      },
-    ],
-  };
+  if (!dashboardData) {
+    return <main className="max-w-7xl mx-auto p-6">Cargando dashboard...</main>;
+  }
 
   return (
     <main className="space-y-8 p-6">

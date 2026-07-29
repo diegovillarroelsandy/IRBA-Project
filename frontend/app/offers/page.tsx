@@ -1,4 +1,4 @@
-import ProductCard from "@/components/ProductCard";
+import ProductCard from "@/components/store/ProductCard";
 
 async function getOffers() {
   const res = await fetch("http://localhost:3000/store/offers", {

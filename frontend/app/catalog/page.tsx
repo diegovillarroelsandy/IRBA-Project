@@ -1,4 +1,4 @@
-import ProductCard from "@/components/ProductCard";
+import ProductCard from "@/components/store/ProductCard";
 
 async function getProducts() {
   const res = await fetch(

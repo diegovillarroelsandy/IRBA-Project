@@ -1,5 +1,6 @@
-import ProductCard from "@/components/ProductCard";
+import ProductCard from "@/components/store/ProductCard";
 import Link from "next/dist/client/link";
+import { Product } from "@/types/product";
 
 async function getHomeData() {
   const res = await fetch("http://localhost:3000/store/home", {
@@ -34,7 +35,7 @@ export default async function Home() {
         <h2 className="text-3xl font-bold mb-6">Productos Destacados</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {data.featured.map((product: any) => (
+          {data.featured.map((product: Product) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
@@ -44,7 +45,7 @@ export default async function Home() {
         <h2 className="text-3xl font-bold mb-6">Ofertas</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {data.offers.map((product: any) => (
+          {data.offers.map((product: Product) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
